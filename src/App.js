@@ -1,100 +1,137 @@
-import React, { useState, useEffect } from 'react';
-import TodoList from './components/TodoList';
+import React, { useState } from "react";
 import './App.css';
-import { act } from '@testing-library/react';
-import TodoItem from './components/TodoItem';
 
 function App() {
+  const [todoList, setTodoList] = useState([]);
+  const [title, setTitle] = useState("");
+  const [details, setDetails] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [completedDate, setCompletedDate] = useState("");
 
-  const [todos, setTodos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [newTodo, setNewTodo] = useState('');
-  const [saving, setSaving] = useState(false);
-  function onChange(e) {
-    const value = e.target.value;
-    setNewTodo(value);
-  }
-  
-  function removeTodo(id) {
-    setTodos(todos.filter(t => t.id !== id));
-  }
+  const handleTitleChange = (event) => {
+    setTitle(event.target.value);
+  };
 
-  function updateTodo(id) {
-      setLoading(true);
-    const newList = todos.map((todoItem) => {
-      if (todoItem.id === id) {
-        const updatedItem = { ...todoItem, completed: !todoItem.completed };
-        return updatedItem;
-      }
-      return todoItem;
-    });
-    setTodos(newList);
-    setLoading(false);
-  }
+  const handleDetailsChange = (event) => {
+    setDetails(event.target.value);
+  };
 
-  function addTodo(e) {
-    e.preventDefault();
-    const value = {
-      userId: 3,
-      id: Math.floor(Math.random() * 10000) + 1,
-      title: newTodo,
-      completed: false,
+  const handleDueDateChange = (event) => {
+    setDueDate(event.target.value);
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const newTodo = {
+      id: todoList.length + 1,
+      title: title,
+      details: details,
+      dueDate: dueDate,
+      completedDate: completedDate,
     };
-  
-    setSaving(true);
-    fetch(process.env.REACT_APP_API_URL, {
-      method: 'POST',
-      body: JSON.stringify(value),
-      headers: {
-        'Content-type': 'application/json; charset=UTF-8',
-      },
-    })
-      .then((response) => response.json())
-      .then((result) => {
-        setTodos(todos.concat({ ...result, id: value.id }));
-        setSaving(false);
-      });
-  }
+    setTodoList([...todoList, newTodo]);
+    setTitle("");
+    setDetails("");
+    setDueDate("");
+  };
 
-  useEffect(() => {
-    async function fetchData() {
-      const result = await fetch(process.env.REACT_APP_API_URL).then((response) =>
-        response.json()
-      );
-      act (()=>{
-        setTodos(result.slice(0, 5));
-        setLoading(false);
-      })
-      
-    }
-    fetchData();
-  }, []);
+  const handleDelete = (id) => {
+    const updatedList = todoList.filter((todo) => todo.id !== id);
+    setTodoList(updatedList);
+  };
+
+  const handleEdit = (id) => {
+    const todoToUpdate = todoList.find((todo) => todo.id === id);
+    setTitle(todoToUpdate.title);
+    setDetails(todoToUpdate.details);
+    setDueDate(todoToUpdate.dueDate);
+    handleDelete(id);
+  };
+
+  const handleSearchTermChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const filteredList = todoList.filter((todo) =>
+    todo.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSortByDueDate = () => {
+    const sortedList = [...todoList].sort((a, b) => {
+      const dateA = new Date(a.dueDate);
+      const dateB = new Date(b.dueDate);
+      return dateA - dateB;
+    });
+    setTodoList(sortedList);
+  };
+
   return (
-  <div className="App">
-    <h1 className="header">My todo list</h1>
-    {loading ? (
-      'Loading'
-    ) : (
-      <TodoList todos={todos} removeHandler={removeTodo} updateTodo={updateTodo} />
-    )}
-
-    <div className="add-todo-form">
-      {saving ? (
-        'Saving'
+    <div className="body">
+      <h1 className="Header">TODO List</h1>
+      <form className="inp-fields" onSubmit={handleSubmit}>
+        <label>
+          Title:
+          <input type="text" value={title} placeholder="Enter Title For TODO" onChange={handleTitleChange} />
+        </label>
+        <label className="space">
+          Details:
+          <input  type="text" value={details} placeholder="A little details" onChange={handleDetailsChange} />
+        </label>
+        <label className="space">
+          Due Date:
+          <input  type="date" value={dueDate} onChange={handleDueDateChange} />
+        </label>
+        <button id="btn-add" type="submit">Add</button>
+      </form>
+      <br />
+      <label className="search">
+        Search:
+        <input  type="text" value={searchTerm} placeholder="Search Your TODOS" onChange={handleSearchTermChange} />
+      </label>
+      <label className="space">
+        Completed Date:
+      <input type="date" value={completedDate} onChange={(e) => setCompletedDate(e.target.value)} />
+      </label>
+      
+      <br />
+      <br />
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Details</th>
+            <th>Due Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+        {filteredList.map((todo) => (
+  <tr key={todo.id}>
+    <td>{todo.title}</td>
+    <td>{todo.details}</td>
+    <td className={new Date(todo.dueDate) <= new Date() ? 'past-due' : 'not-past-due'}>
+      {todo.dueDate}
+    </td>
+    <td>
+      {todo.completedDate ? (
+        <p>Completed on {todo.completedDate}</p>
       ) : (
-        <form onSubmit={addTodo}>
-          <input type="text" onChange={onChange} />
-          <button type="submit">Add new todo</button>
-        </form>
+        <>
+          <button id="btn-ed-del" onClick={() => handleEdit(todo.id)}>Edit</button>
+          <button id="btn-ed-del" onClick={() => handleDelete(todo.id)}>Delete</button>
+          <button id="btn-sort" onClick={handleSortByDueDate}>Sort by Due Date</button>
+        </>
       )}
-    </div>
-  </div>
-);
+    </td>
+  </tr>
+))}
 
+          
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 export default App;
-
-
-
-
